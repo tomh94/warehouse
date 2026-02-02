@@ -4,7 +4,7 @@
 
 struct Shelf {
     int index;
-    int capacity;
+    float capacity;
 };
 
 struct Address {
@@ -26,11 +26,11 @@ struct Item {
     int productionYear;
     char batch[10];
     char name[40];
-    int supplierPrice;
-    int sellPrice;
+    float supplierPrice;
+    float sellPrice;
     int DPH;
     int quantity;
-    int cubicCapacity;
+    float cubicCapacity;
     struct Supplier supplier;
 };
 
@@ -62,6 +62,27 @@ void searchItems(struct Item items[], int count) {
     for (int i = 0; i < count; i++) {
         if (strstr(items[i].name, search)) {
             printf("ID: %d. Name: %s\n", items[i].ID, items[i].name);
+        }
+    }
+}
+
+void searchItemsBySellerPrice(struct Item items[], int count) {
+    float minPrice, maxPrice;
+
+    printf("Enter minimum price: ");
+    scanf("%f", &minPrice);
+
+    printf("Enter maximum price: ");
+    scanf("%f", &maxPrice);
+
+    if (minPrice > maxPrice) {
+        printf("špatný filtr\n");
+        return;
+    }
+    printf("\nProdukty v tomto rozmezí %.2f - %.2f:\n", minPrice, maxPrice);
+    for (int i = 0; i < count; i++) {
+        if (items[i].sellPrice >= minPrice && items[i].sellPrice <= maxPrice) {
+            printf("ID: %d, Name: %s, Price: %.2f\n", items[i].ID, items[i].name, items[i].sellPrice);
         }
     }
 }
@@ -111,8 +132,8 @@ int main(void) {
     items[2].productionYear = 2025;
     strcpy(items[2].batch, "113/25");
     strcpy(items[2].name, "Děvín");
-    items[2].supplierPrice = 3500;
-    items[2].sellPrice = 5000;
+    items[2].supplierPrice = 34;
+    items[2].sellPrice = 189;
     items[2].DPH = 21;
     items[2].quantity = 8;
     items[2].cubicCapacity = 8;
@@ -141,7 +162,7 @@ int main(void) {
                 break;
             case '3':
                 printf("\n--- Vyhledavani podle ceny ---\n");
-                // TODO
+                searchItemsBySellerPrice(items, itemCount);
                 break;
             case '4':
                 printf("\n--- Detail produktu ---\n");
