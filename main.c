@@ -41,7 +41,8 @@ void showMenu() {
     printf("3. Vyhledavani podle ceny\n");
     printf("4. Zobrazeni detailu produktu\n");
     printf("5. Odstraneni produktu\n");
-    printf("6. Upravit/přidat produktu\n");
+    printf("6. Upravení produktu\n");
+    printf("7. Přidání produktu\n");
     printf("X. Konec\n");
     printf("Vyberte akci: ");
 }
@@ -87,8 +88,31 @@ void searchItemsBySellerPrice(struct Item items[], int count) {
     }
 }
 
+void printItemDetail(struct Item *item) {
+    printf("\n=== Detail produktu ===\n");
+    printf("ID: %d\n", item->ID);
+    printf("Název: %s\n", item->name);
+    printf("EAN: %d\n", item->EAN);
+    printf("Rok výroby: %d\n", item->productionYear);
+    printf("Šarže: %s\n", item->batch);
+    printf("Nákupní cena: %.2f Kč\n", item->supplierPrice);
+    printf("Prodejní cena: %.2f Kč\n", item->sellPrice);
+    printf("DPH: %d%%\n", item->DPH);
+    printf("Množství: %d ks\n", item->quantity);
+    printf("Objem: %.2f m³\n", item->cubicCapacity);
+    printf("\n--- Dodavatel ---\n");
+    printf("IČO: %d\n", item->supplier.ICO);
+    printf("Název: %s\n", item->supplier.name);
+    printf("Adresa: %s, %s, %s %s\n",
+           item->supplier.address.street,
+           item->supplier.address.city,
+           item->supplier.address.zip,
+           item->supplier.address.state);
+}
+
 void showItemDetail(struct Item items[], int count) {
     int searchID;
+    showAllItems(items,count);
     printf("Zadejte ID produktu: ");
     scanf("%d", &searchID);
 
@@ -96,25 +120,7 @@ void showItemDetail(struct Item items[], int count) {
     for (int i = 0; i < count; i++) {
         if (items[i].ID == searchID) {
             found = 1;
-            printf("\n=== Detail produktu ===\n");
-            printf("ID: %d\n", items[i].ID);
-            printf("Název: %s\n", items[i].name);
-            printf("EAN: %d\n", items[i].EAN);
-            printf("Rok výroby: %d\n", items[i].productionYear);
-            printf("Šarže: %s\n", items[i].batch);
-            printf("Nákupní cena: %.2f Kč\n", items[i].supplierPrice);
-            printf("Prodejní cena: %.2f Kč\n", items[i].sellPrice);
-            printf("DPH: %d%%\n", items[i].DPH);
-            printf("Množství: %d ks\n", items[i].quantity);
-            printf("Objem: %.2f m³\n", items[i].cubicCapacity);
-            printf("\n--- Dodavatel ---\n");
-            printf("IČO: %d\n", items[i].supplier.ICO);
-            printf("Název: %s\n", items[i].supplier.name);
-            printf("Adresa: %s, %s, %s %s\n", 
-                   items[i].supplier.address.street,
-                   items[i].supplier.address.city,
-                   items[i].supplier.address.zip,
-                   items[i].supplier.address.state);
+            printItemDetail(&items[i]);
             break;
         }
     }
@@ -135,20 +141,127 @@ void removeItem(struct Item items[], int *count) {
         if (items[i].ID == searchID) {
             found = 1;
             printf("Odstraňuji produkt: %s (ID: %d)\n", items[i].name, items[i].ID);
-            
+
             // Posun všechny následující prvky o jednu pozici doleva
             for (int j = i; j < *count - 1; j++) {
                 items[j] = items[j + 1];
             }
-            
+
             (*count)--;
-            
+
             // Aktualizuj ID všech produktů od odstraněného místa
             for (int j = i; j < *count; j++) {
                 items[j].ID = j;
             }
-            
+
             printf("Produkt byl úspěšně odstraněn a ID byla aktualizována.\n");
+            break;
+        }
+    }
+
+    if (!found) {
+        printf("Produkt s ID %d nebyl nalezen.\n", searchID);
+    }
+}
+
+void editItem(struct Item items[], int count) {
+    showAllItems(items, count);
+    int searchID;
+    printf("Zadejte ID produktu k úpravě: ");
+    scanf("%d", &searchID);
+
+    int found = 0;
+    for (int i = 0; i < count; i++) {
+        if (items[i].ID == searchID) {
+            found = 1;
+            
+            // Zobraz detail produktu před úpravou
+            printItemDetail(&items[i]);
+            
+            printf("\n=== Co chcete upravit? ===\n");
+            printf("1. Název\n");
+            printf("2. EAN\n");
+            printf("3. Rok výroby\n");
+            printf("4. Šarže\n");
+            printf("5. Nákupní cena\n");
+            printf("6. Prodejní cena\n");
+            printf("7. DPH\n");
+            printf("8. Množství\n");
+            printf("9. Objem\n");
+            printf("10. Dodavatel\n");
+            printf("0. Zrušit\n");
+            printf("Vyberte možnost: ");
+            
+            int choice;
+            scanf("%d", &choice);
+            
+            switch (choice) {
+                case 1:
+                    printf("Nový název: ");
+                    scanf(" %39[^\n]", items[i].name);
+                    printf("Název byl aktualizován.\n");
+                    break;
+                case 2:
+                    printf("Nové EAN: ");
+                    scanf("%d", &items[i].EAN);
+                    printf("EAN bylo aktualizováno.\n");
+                    break;
+                case 3:
+                    printf("Nový rok výroby: ");
+                    scanf("%d", &items[i].productionYear);
+                    printf("Rok výroby byl aktualizován.\n");
+                    break;
+                case 4:
+                    printf("Nová šarže: ");
+                    scanf(" %9[^\n]", items[i].batch);
+                    printf("Šarže byla aktualizována.\n");
+                    break;
+                case 5:
+                    printf("Nová nákupní cena: ");
+                    scanf("%f", &items[i].supplierPrice);
+                    printf("Nákupní cena byla aktualizována.\n");
+                    break;
+                case 6:
+                    printf("Nová prodejní cena: ");
+                    scanf("%f", &items[i].sellPrice);
+                    printf("Prodejní cena byla aktualizována.\n");
+                    break;
+                case 7:
+                    printf("Nové DPH (%%): ");
+                    scanf("%d", &items[i].DPH);
+                    printf("DPH bylo aktualizováno.\n");
+                    break;
+                case 8:
+                    printf("Nové množství: ");
+                    scanf("%d", &items[i].quantity);
+                    printf("Množství bylo aktualizováno.\n");
+                    break;
+                case 9:
+                    printf("Nový objem: ");
+                    scanf("%f", &items[i].cubicCapacity);
+                    printf("Objem byl aktualizován.\n");
+                    break;
+                case 10:
+                    printf("Nové IČO dodavatele: ");
+                    scanf("%d", &items[i].supplier.ICO);
+                    printf("Nový název dodavatele: ");
+                    scanf(" %39[^\n]", items[i].supplier.name);
+                    printf("Ulice: ");
+                    scanf(" %39[^\n]", items[i].supplier.address.street);
+                    printf("Město: ");
+                    scanf(" %39[^\n]", items[i].supplier.address.city);
+                    printf("PSČ: ");
+                    scanf(" %39[^\n]", items[i].supplier.address.zip);
+                    printf("Stát: ");
+                    scanf(" %39[^\n]", items[i].supplier.address.state);
+                    printf("Dodavatel byl aktualizován.\n");
+                    break;
+                case 0:
+                    printf("Úprava zrušena.\n");
+                    break;
+                default:
+                    printf("Neplatná volba.\n");
+            }
             break;
         }
     }
@@ -244,9 +357,12 @@ int main(void) {
                 removeItem(items, &itemCount);
                 break;
             case '6':
-                printf("\n--- Upravit/přidat produkt ---\n");
-                // TODO
+                printf("\n--- Upravit produkt ---\n");
+                editItem(items, itemCount);
                 break;
+            case '7':
+                printf("\n--- Nový produkt ---\n");
+                // TODO
             case 'X':
             case 'x':
                 printf("\nUkoncuji aplikaci...\n");
