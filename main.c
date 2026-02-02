@@ -88,7 +88,6 @@ void searchItemsBySellerPrice(struct Item items[], int count) {
 }
 
 void showItemDetail(struct Item items[], int count) {
-    showAllItems(items, count);
     int searchID;
     printf("Zadejte ID produktu: ");
     scanf("%d", &searchID);
@@ -116,6 +115,40 @@ void showItemDetail(struct Item items[], int count) {
                    items[i].supplier.address.city,
                    items[i].supplier.address.zip,
                    items[i].supplier.address.state);
+            break;
+        }
+    }
+
+    if (!found) {
+        printf("Produkt s ID %d nebyl nalezen.\n", searchID);
+    }
+}
+
+void removeItem(struct Item items[], int *count) {
+    showAllItems(items, *count);
+    int searchID;
+    printf("Zadejte ID produktu k odstranění: ");
+    scanf("%d", &searchID);
+
+    int found = 0;
+    for (int i = 0; i < *count; i++) {
+        if (items[i].ID == searchID) {
+            found = 1;
+            printf("Odstraňuji produkt: %s (ID: %d)\n", items[i].name, items[i].ID);
+            
+            // Posun všechny následující prvky o jednu pozici doleva
+            for (int j = i; j < *count - 1; j++) {
+                items[j] = items[j + 1];
+            }
+            
+            (*count)--;
+            
+            // Aktualizuj ID všech produktů od odstraněného místa
+            for (int j = i; j < *count; j++) {
+                items[j].ID = j;
+            }
+            
+            printf("Produkt byl úspěšně odstraněn a ID byla aktualizována.\n");
             break;
         }
     }
@@ -208,10 +241,10 @@ int main(void) {
                 break;
             case '5':
                 printf("\n--- Odstraneni produktu ---\n");
-                // TODO
+                removeItem(items, &itemCount);
                 break;
             case '6':
-                printf("\n--- Uprava produktu ---\n");
+                printf("\n--- Upravit/přidat produkt ---\n");
                 // TODO
                 break;
             case 'X':
