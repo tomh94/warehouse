@@ -87,6 +87,44 @@ void searchItemsBySellerPrice(struct Item items[], int count) {
     }
 }
 
+void showItemDetail(struct Item items[], int count) {
+    showAllItems(items, count);
+    int searchID;
+    printf("Zadejte ID produktu: ");
+    scanf("%d", &searchID);
+
+    int found = 0;
+    for (int i = 0; i < count; i++) {
+        if (items[i].ID == searchID) {
+            found = 1;
+            printf("\n=== Detail produktu ===\n");
+            printf("ID: %d\n", items[i].ID);
+            printf("Název: %s\n", items[i].name);
+            printf("EAN: %d\n", items[i].EAN);
+            printf("Rok výroby: %d\n", items[i].productionYear);
+            printf("Šarže: %s\n", items[i].batch);
+            printf("Nákupní cena: %.2f Kč\n", items[i].supplierPrice);
+            printf("Prodejní cena: %.2f Kč\n", items[i].sellPrice);
+            printf("DPH: %d%%\n", items[i].DPH);
+            printf("Množství: %d ks\n", items[i].quantity);
+            printf("Objem: %.2f m³\n", items[i].cubicCapacity);
+            printf("\n--- Dodavatel ---\n");
+            printf("IČO: %d\n", items[i].supplier.ICO);
+            printf("Název: %s\n", items[i].supplier.name);
+            printf("Adresa: %s, %s, %s %s\n", 
+                   items[i].supplier.address.street,
+                   items[i].supplier.address.city,
+                   items[i].supplier.address.zip,
+                   items[i].supplier.address.state);
+            break;
+        }
+    }
+
+    if (!found) {
+        printf("Produkt s ID %d nebyl nalezen.\n", searchID);
+    }
+}
+
 int main(void) {
     struct Item items[1000];
 
@@ -166,7 +204,7 @@ int main(void) {
                 break;
             case '4':
                 printf("\n--- Detail produktu ---\n");
-                // TODO
+                showItemDetail(items, itemCount);
                 break;
             case '5':
                 printf("\n--- Odstraneni produktu ---\n");
