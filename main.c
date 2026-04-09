@@ -2,7 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_WAREHOUSE_CAPACITY 1000
+// definování začátku
+
+#define MAX_WAREHOUSE_CAPACITY 1000.0
+#define INITIAL_CAPACITY 3
+
+// struktura struktur
 
 struct Address {
     char street[40];
@@ -19,27 +24,30 @@ struct Supplier {
 
 struct Item {
     int ID;
-    int EAN;
+    long long EAN;
     int productionYear;
     char batch[10];
     char name[40];
-    float supplierPrice;
-    float sellPrice;
+    double supplierPrice;
+    double sellPrice;
     int DPH;
     int quantity;
     double cubicCapacity;
     struct Supplier supplier;
 };
 
-float getTotalVolume(struct Item items[], int count) {
-    float total = 0.0;
+
+// pomocné metody
+
+double getTotalVolume(struct Item *items, int count) {
+    double total = 0.0;
     for (int i = 0; i < count; i++) {
         total += items[i].cubicCapacity * items[i].quantity;
     }
     return total;
 }
 
-int getTotalQuantity(struct Item items[], int count) {
+int getTotalQuantity(struct Item *items, int count) {
     int total = 0;
     for (int i = 0; i < count; i++) {
         total += items[i].quantity;
@@ -47,426 +55,434 @@ int getTotalQuantity(struct Item items[], int count) {
     return total;
 }
 
+/** funkce na zvětšení paměti
+ *
+ * @param items
+ * @param capacity
+ * @return 1 když zvětší pamět, 0 když to nejde
+ */
+int growItems(struct Item **items, int *capacity) {
+    int newCapacity = (*capacity) * 2;
+    struct Item *tmp = realloc(*items, newCapacity * sizeof(struct Item));
+    if (!tmp) {
+        printf("CHYBA: Nedostatek pameti (realloc selhal).\n");
+        return 0;
+    }
+    *items = tmp;
+    *capacity = newCapacity;
+    return 1;
+}
+
+// hlavní meníčko
+
 void showMenu() {
     printf("\n=== MENU ===\n");
     printf("1. Vypis vsech produktu\n");
-    printf("2. Vyhledavani produktu podle nazvu\n");
+    printf("2. Vyhledavani podle nazvu\n");
     printf("3. Vyhledavani podle ceny\n");
-    printf("4. Zobrazeni detailu produktu\n");
+    printf("4. Detail produktu\n");
     printf("5. Odstraneni produktu\n");
-    printf("6. Upravení produktu\n");
-    printf("7. Přidání produktu\n");
+    printf("6. Uprava produktu\n");
+    printf("7. Pridani produktu\n");
     printf("8. Stav skladu\n");
-    printf("9. Naskladnění\n");
+    printf("9. Naskladneni\n");
     printf("X. Konec\n");
     printf("Vyberte akci: ");
 }
 
-void showAllItems(struct Item items[], int count) {
-    printf("All items: \n");
-    for (int i = 0; i < count; i++) {
-        printf("ID: %d. Name: %s\n", items[i].ID, items[i].name);
-    }
-}
-
-void showWarehouseStatus(struct Item items[], int count) {
-    int totalQuantity = getTotalQuantity(items, count);
-    float totalVolume = getTotalVolume(items, count);
-    float available = MAX_WAREHOUSE_CAPACITY - totalVolume;
-    float usage = (totalVolume * 100.0) / MAX_WAREHOUSE_CAPACITY;
-
-    printf("\n=== Stav skladu ===\n");
-    printf("Celková kapacita: %d m³\n", MAX_WAREHOUSE_CAPACITY);
-    printf("Obsazeno: %.2f m³ (%d ks)\n", totalVolume, totalQuantity);
-    printf("Volné místo: %.2f m³\n", available);
-    printf("Využití: %.1f%%\n", usage);
-
-    if (usage > 90) {
-        printf("Sklad je téměř plný\n");
-    }
-}
-
-void searchItems(struct Item items[], int count) {
-    char search[40];
-    printf("Search items: \n");
-    scanf("%39s", &search);
-
-    printf("Searched items: \n");
-    for (int i = 0; i < count; i++) {
-        if (strstr(items[i].name, search)) {
-            printf("ID: %d. Name: %s\n", items[i].ID, items[i].name);
-        }
-    }
-}
-
-void searchItemsBySellerPrice(struct Item items[], int count) {
-    float minPrice, maxPrice;
-
-    printf("Enter minimum price: ");
-    scanf("%f", &minPrice);
-
-    printf("Enter maximum price: ");
-    scanf("%f", &maxPrice);
-
-    if (minPrice > maxPrice) {
-        printf("špatný filtr\n");
+// volba, vypíše všechny položky na skladě
+void showAllItems(struct Item *items, int count) {
+    if (count == 0) {
+        printf("Sklad je prazdny.\n");
         return;
     }
-    printf("\nProdukty v tomto rozmezí %.2f - %.2f:\n", minPrice, maxPrice);
+    printf("%-5s %-30s %10s %10s\n", "ID", "Nazev", "Cena bez DPH", "Pocet ks");
+    printf("------------------------------------------------------------\n");
     for (int i = 0; i < count; i++) {
-        if (items[i].sellPrice >= minPrice && items[i].sellPrice <= maxPrice) {
-            printf("ID: %d, Name: %s, Price: %.2f\n", items[i].ID, items[i].name, items[i].sellPrice);
-        }
+        printf("%-5d %-30s %9.2f Kc %7d ks\n",
+               items[i].ID, items[i].name, items[i].sellPrice, items[i].quantity);
     }
 }
 
+// ukáže vyplněnost skladu
+void showWarehouseStatus(struct Item *items, int count) {
+    int totalQuantity = getTotalQuantity(items, count);
+    double totalVolume = getTotalVolume(items, count);
+    double available = MAX_WAREHOUSE_CAPACITY - totalVolume;
+    double usage = (totalVolume * 100.0) / MAX_WAREHOUSE_CAPACITY;
+
+    printf("\n=== Stav skladu ===\n");
+    printf("Celkova kapacita: %.0f m3\n", MAX_WAREHOUSE_CAPACITY);
+    printf("Obsazeno:         %.2f m3 (%d ks)\n", totalVolume, totalQuantity);
+    printf("Volne misto:      %.2f m3\n", available);
+    printf("Vyuziti:          %.1f%%\n", usage);
+
+    if (usage > 90.0) {
+        printf("UPOZORNENI: Sklad je temer plny!\n");
+    }
+}
+
+// výpis detailu produktu
 void printItemDetail(struct Item *item) {
+    double priceWithDPH = item->sellPrice * (1.0 + item->DPH / 100.0);
     printf("\n=== Detail produktu ===\n");
-    printf("ID: %d\n", item->ID);
-    printf("Název: %s\n", item->name);
-    printf("EAN: %d\n", item->EAN);
-    printf("Rok výroby: %d\n", item->productionYear);
-    printf("Šarže: %s\n", item->batch);
-    printf("Nákupní cena: %.2f Kč\n", item->supplierPrice);
-    printf("Prodejní cena: %.2f Kč\n", item->sellPrice);
-    printf("DPH: %d%%\n", item->DPH);
-    printf("Množství: %d ks\n", item->quantity);
-    printf("Objem: %.2f m³\n", item->cubicCapacity);
-    printf("\n--- Dodavatel ---\n");
-    printf("IČO: %d\n", item->supplier.ICO);
-    printf("Název: %s\n", item->supplier.name);
-    printf("Adresa: %s, %s, %s %s\n",
+    printf("ID:                  %d\n",      item->ID);
+    printf("Nazev:               %s\n",      item->name);
+    printf("EAN:                 %lld\n",    item->EAN);
+    printf("Rok vyroby:          %d\n",      item->productionYear);
+    printf("Sarze:               %s\n",      item->batch);
+    printf("Nakupni cena:        %.2f Kc (bez DPH)\n", item->supplierPrice);
+    printf("Prodejni cena:       %.2f Kc (bez DPH)\n", item->sellPrice);
+    printf("Prodejni cena s DPH: %.2f Kc\n", priceWithDPH);
+    printf("DPH:                 %d%%\n",    item->DPH);
+    printf("Mnozstvi:            %d ks\n",   item->quantity);
+    printf("Objem/ks:            %.4f m3\n", item->cubicCapacity);
+    printf("--- Dodavatel ---\n");
+    printf("ICO:    %d\n",  item->supplier.ICO);
+    printf("Nazev:  %s\n",  item->supplier.name);
+    printf("Adresa: %s, %s, %s, %s\n",
            item->supplier.address.street,
            item->supplier.address.city,
            item->supplier.address.zip,
            item->supplier.address.state);
 }
 
-void showItemDetail(struct Item items[], int count) {
+// vyhledávání podle názvu
+void searchItems(struct Item *items, int count) {
+    char search[40];
+    printf("Hledat nazev: ");
+    scanf(" %39[^\n]", search);
+
+    int found = 0;
+    for (int i = 0; i < count; i++) {
+        if (strstr(items[i].name, search)) {
+            printf("ID: %d | %s | %.2f Kc (bez DPH) | %d ks\n",
+                   items[i].ID, items[i].name, items[i].sellPrice, items[i].quantity);
+            found = 1;
+        }
+    }
+    if (!found) printf("Zadny produkt nenalezen.\n");
+}
+
+// vyhledávání podle ceny
+void searchItemsByPrice(struct Item *items, int count) {
+    double minPrice, maxPrice;
+    printf("Minimalni cena (bez DPH): ");
+    scanf("%lf", &minPrice);
+    printf("Maximalni cena (bez DPH): ");
+    scanf("%lf", &maxPrice);
+
+    if (minPrice > maxPrice) {
+        printf("Chyba: minimalni cena je vyssi nez maximalni.\n");
+        return;
+    }
+
+    int found = 0;
+    printf("\nProdukty v rozmezi %.2f - %.2f Kc (bez DPH):\n", minPrice, maxPrice);
+    for (int i = 0; i < count; i++) {
+        if (items[i].sellPrice >= minPrice && items[i].sellPrice <= maxPrice) {
+            double priceWithDPH = items[i].sellPrice * (1.0 + items[i].DPH / 100.0);
+            printf("ID: %d | %s | bez DPH: %.2f Kc | s DPH: %.2f Kc | DPH: %d%%\n",
+                   items[i].ID, items[i].name,
+                   items[i].sellPrice, priceWithDPH, items[i].DPH);
+            found = 1;
+        }
+    }
+    if (!found) printf("Zadny produkt v tomto rozmezi.\n");
+}
+// funkce na výběr produktu k vypsání jeho detailu
+void showItemDetail(struct Item *items, int count) {
+    showAllItems(items, count);
     int searchID;
-    showAllItems(items,count);
     printf("Zadejte ID produktu: ");
     scanf("%d", &searchID);
 
-    int found = 0;
     for (int i = 0; i < count; i++) {
         if (items[i].ID == searchID) {
-            found = 1;
             printItemDetail(&items[i]);
-            break;
+            return;
         }
     }
-
-    if (!found) {
-        printf("Produkt s ID %d nebyl nalezen.\n", searchID);
-    }
+    printf("Produkt s ID %d nebyl nalezen.\n", searchID);
 }
 
-void removeItem(struct Item items[], int *count) {
-    showAllItems(items, *count);
+// odstraní item
+void removeItem(struct Item **items, int *count, int *capacity) {
+    showAllItems(*items, *count);
     int searchID;
-    printf("Zadejte ID produktu k odstranění: ");
+    printf("Zadejte ID produktu k odstraneni: ");
     scanf("%d", &searchID);
 
-    int found = 0;
     for (int i = 0; i < *count; i++) {
-        if (items[i].ID == searchID) {
-            found = 1;
-            printf("Odstraňuji produkt: %s (ID: %d)\n", items[i].name, items[i].ID);
+        if ((*items)[i].ID == searchID) {
+            printf("Odstranuji: %s (ID: %d)\n", (*items)[i].name, (*items)[i].ID);
 
-            // move items by one to the left
+            // posun prvku vlevo
             for (int j = i; j < *count - 1; j++) {
-                items[j] = items[j + 1];
+                (*items)[j] = (*items)[j + 1];
             }
-
             (*count)--;
 
-            // actualize IDs
+            // aktualizuj ID
             for (int j = i; j < *count; j++) {
-                items[j].ID = j;
+                (*items)[j].ID = j;
             }
 
-            printf("Produkt byl úspěšně odstraněn a ID byla aktualizována.\n");
-            break;
+            // zmensi pamet pokud je vyuzita mene nez ctvrtina (ale ne pod INITIAL_CAPACITY)
+            if (*count > INITIAL_CAPACITY && *count < (*capacity) / 4) {
+                int newCapacity = (*capacity) / 2;
+                struct Item *tmp = realloc(*items, newCapacity * sizeof(struct Item));
+                if (tmp) {
+                    *items = tmp;
+                    *capacity = newCapacity;
+                }
+            }
+
+            printf("Produkt byl uspesne odstranen.\n");
+            return;
         }
     }
-
-    if (!found) {
-        printf("Produkt s ID %d nebyl nalezen.\n", searchID);
-    }
+    printf("Produkt s ID %d nebyl nalezen.\n", searchID);
 }
-
-void editItem(struct Item items[], int count) {
+// upraví item
+void editItem(struct Item *items, int count) {
     showAllItems(items, count);
     int searchID;
-    printf("Zadejte ID produktu k úpravě: ");
+    printf("Zadejte ID produktu k uprave: ");
     scanf("%d", &searchID);
 
-    int found = 0;
     for (int i = 0; i < count; i++) {
         if (items[i].ID == searchID) {
-            found = 1;
-
             printItemDetail(&items[i]);
-            
+
             printf("\n=== Co chcete upravit? ===\n");
-            printf("1. Název\n");
-            printf("2. EAN\n");
-            printf("3. Rok výroby\n");
-            printf("4. Šarže\n");
-            printf("5. Nákupní cena\n");
-            printf("6. Prodejní cena\n");
-            printf("7. DPH\n");
-            printf("8. Objem\n");
-            printf("9. Dodavatel\n");
-            printf("0. Zrušit\n");
-            printf("Vyberte možnost: ");
-        
-                int choice;
-                scanf("%d", &choice);
-        
-                switch (choice) {
-                    case 1:
-                        printf("Nový název: ");
-                        scanf(" %39[^\n]", items[i].name);
-                        printf("Název byl aktualizován.\n");
-                        break;
-                    case 2:
-                        printf("Nové EAN: ");
-                        scanf("%d", &items[i].EAN);
-                        printf("EAN bylo aktualizováno.\n");
-                        break;
-                    case 3:
-                        printf("Nový rok výroby: ");
-                        scanf("%d", &items[i].productionYear);
-                        printf("Rok výroby byl aktualizován.\n");
-                        break;
-                    case 4:
-                        printf("Nová šarže: ");
-                        scanf(" %9[^\n]", items[i].batch);
-                        printf("Šarže byla aktualizována.\n");
-                        break;
-                    case 5:
-                        printf("Nová nákupní cena: ");
-                        scanf("%f", &items[i].supplierPrice);
-                        printf("Nákupní cena byla aktualizována.\n");
-                        break;
-                    case 6:
-                        printf("Nová prodejní cena: ");
-                        scanf("%f", &items[i].sellPrice);
-                        printf("Prodejní cena byla aktualizována.\n");
-                        break;
-                    case 7:
-                        printf("Nové DPH (%%): ");
-                        scanf("%d", &items[i].DPH);
-                        printf("DPH bylo aktualizováno.\n");
-                        break;
-                    case 8:
-                        printf("Nový objem: ");
-                        scanf("%f", &items[i].cubicCapacity);
-                        printf("Objem byl aktualizován.\n");
-                        break;
-                    case 9:
-                        printf("Nové IČO dodavatele: ");
-                        scanf("%d", &items[i].supplier.ICO);
-                        printf("Nový název dodavatele: ");
-                        scanf(" %39[^\n]", items[i].supplier.name);
-                        printf("Ulice: ");
-                        scanf(" %39[^\n]", items[i].supplier.address.street);
-                        printf("Město: ");
-                        scanf(" %39[^\n]", items[i].supplier.address.city);
-                        printf("PSČ: ");
-                        scanf(" %39[^\n]", items[i].supplier.address.zip);
-                        printf("Stát: ");
-                        scanf(" %39[^\n]", items[i].supplier.address.state);
-                        printf("Dodavatel byl aktualizován.\n");
-                        break;
-                    case 0:
-                        printf("Úprava zrušena.\n");
-                        break;
-                    default:
-                        printf("Neplatná volba.\n");
+            printf("1. Nazev\n2. EAN\n3. Rok vyroby\n4. Sarze\n");
+            printf("5. Nakupni cena\n6. Prodejni cena\n7. DPH\n8. Objem\n9. Dodavatel\n0. Zrusit\n");
+            printf("Vyberte moznost: ");
+
+            int choice;
+            scanf("%d", &choice);
+
+            switch (choice) {
+                case 1:
+                    printf("Novy nazev: ");
+                    scanf(" %39[^\n]", items[i].name);
+                    break;
+                case 2:
+                    printf("Nove EAN: ");
+                    scanf("%lld", &items[i].EAN);
+                    break;
+                case 3:
+                    printf("Novy rok vyroby: ");
+                    scanf("%d", &items[i].productionYear);
+                    break;
+                case 4:
+                    printf("Nova sarze: ");
+                    scanf(" %9[^\n]", items[i].batch);
+                    break;
+                case 5:
+                    printf("Nova nakupni cena (bez DPH): ");
+                    scanf("%lf", &items[i].supplierPrice);
+                    break;
+                case 6:
+                    printf("Nova prodejni cena (bez DPH): ");
+                    scanf("%lf", &items[i].sellPrice);
+                    break;
+                case 7:
+                    printf("Nove DPH (%%): ");
+                    scanf("%d", &items[i].DPH);
+                    break;
+                case 8:
+                    printf("Novy objem (m3): ");
+                    scanf("%lf", &items[i].cubicCapacity);
+                    break;
+                case 9:
+                    printf("Nove ICO: ");
+                    scanf("%d", &items[i].supplier.ICO);
+                    printf("Novy nazev dodavatele: ");
+                    scanf(" %39[^\n]", items[i].supplier.name);
+                    printf("Ulice: ");
+                    scanf(" %39[^\n]", items[i].supplier.address.street);
+                    printf("Mesto: ");
+                    scanf(" %39[^\n]", items[i].supplier.address.city);
+                    printf("PSC: ");
+                    scanf(" %39[^\n]", items[i].supplier.address.zip);
+                    printf("Stat: ");
+                    scanf(" %39[^\n]", items[i].supplier.address.state);
+                    break;
+                case 0:
+                    printf("Uprava zrusena.\n");
+                    return;
+                default:
+                    printf("Neplatna volba.\n");
+                    return;
             }
-            break;
+            printf("Produkt byl aktualizovan.\n");
+            return;
         }
     }
-
-    if (!found) {
-        printf("Produkt s ID %d nebyl nalezen.\n", searchID);
-    }
+    printf("Produkt s ID %d nebyl nalezen.\n", searchID);
 }
+// přidání nového produktu
+void addItem(struct Item **items, int *count, int *capacity) {
+    double totalVolume = getTotalVolume(*items, *count);
+    double availableVolume = MAX_WAREHOUSE_CAPACITY - totalVolume;
 
-void addItem(struct Item items[], int *count) {
-    int totalQuantity = getTotalQuantity(items, *count);
-    int availableSpace = MAX_WAREHOUSE_CAPACITY - totalQuantity;
-    
-    if (availableSpace <= 0) {
-        printf("Sklad je plný! Nelze přidat nový produkt.\n");
+    if (availableVolume <= 0.0) {
+        printf("Sklad je plny! Nelze pridat novy produkt.\n");
         return;
     }
-    
-    printf("Volná kapacita skladu: %d ks\n", availableSpace);
-    
+    // zkontroluje jestli je dostupná pamet a kdyžtak ji alokuje
+    if (*count >= *capacity) {
+        if (!growItems(items, capacity)) return;
+    }
+
+    printf("Volna kapacita skladu: %.2f m3\n", availableVolume);
+
     char copyChoice;
-    printf("Chcete kopírovat existující produkt? (a/n): ");
+    printf("Chcete kopirovat existujici produkt? (a/n): ");
     scanf(" %c", &copyChoice);
-    
-    struct Item *item = &items[*count];
+
+    struct Item *item = &(*items)[*count];
     item->ID = *count;
-    
+
     if (copyChoice == 'a' || copyChoice == 'A') {
+        showAllItems(*items, *count);
         int copyID;
-        showAllItems(items, *count);
         printf("Zadejte ID produktu ke kopirovani: ");
         scanf("%d", &copyID);
-        
-        if (copyID >= 0 && copyID < *count) {
-            // copy product
-            *item = items[copyID];
-            item->ID = *count;
-            
-            // rewrite specifications
-            printf("Název: "); scanf(" %39[^\n]", item->name);
-            printf("EAN: "); scanf("%d", &item->EAN);
-            printf("Rok výroby: "); scanf("%d", &item->productionYear);
-            item->quantity = 0;
-            
-            (*count)++;
-            printf("Produkt byl zkopírován a upraven s ID %d.\n", item->ID);
-        } else {
-            printf("Neplatné ID.\n");
-        }
-    } else {
-        // enter all specifications
-        printf("Název: "); scanf(" %39[^\n]", item->name);
-        printf("EAN: "); scanf("%d", &item->EAN);
-        printf("Rok výroby: "); scanf("%d", &item->productionYear);
-        printf("Šarže: "); scanf(" %9[^\n]", item->batch);
-        printf("Nákupní cena: "); scanf("%f", &item->supplierPrice);
-        printf("Prodejní cena: "); scanf("%f", &item->sellPrice);
-        printf("DPH (%%): "); scanf("%d", &item->DPH);
-        item->quantity = 0;
-        printf("Objem: "); scanf("%f", &item->cubicCapacity);
-        printf("IČO dodavatele: "); scanf("%d", &item->supplier.ICO);
-        printf("Název dodavatele: "); scanf(" %39[^\n]", item->supplier.name);
-        printf("Ulice: "); scanf(" %39[^\n]", item->supplier.address.street);
-        printf("Město: "); scanf(" %39[^\n]", item->supplier.address.city);
-        printf("PSČ: "); scanf(" %39[^\n]", item->supplier.address.zip);
-        printf("Stát: "); scanf(" %39[^\n]", item->supplier.address.state);
-        (*count)++;
-        printf("Produkt byl přidán s ID %d.\n", item->ID);
-    }
-}
 
-void stockIn(struct Item items[], int count) {
+        if (copyID < 0 || copyID >= *count) {
+            printf("Neplatne ID.\n");
+            return;
+        }
+        *item = (*items)[copyID];
+        item->ID = *count;
+        item->quantity = 0;
+
+        printf("Nazev: ");    scanf(" %39[^\n]", item->name);
+        printf("EAN: ");      scanf("%lld", &item->EAN);
+        printf("Rok vyroby: "); scanf("%d", &item->productionYear);
+        printf("Sarze: ");    scanf(" %9[^\n]", item->batch);
+    } else {
+        printf("Nazev: ");          scanf(" %39[^\n]", item->name);
+        printf("EAN: ");            scanf("%lld", &item->EAN);
+        printf("Rok vyroby: ");     scanf("%d", &item->productionYear);
+        printf("Sarze: ");          scanf(" %9[^\n]", item->batch);
+        printf("Nakupni cena (bez DPH): ");  scanf("%lf", &item->supplierPrice);
+        printf("Prodejni cena (bez DPH): "); scanf("%lf", &item->sellPrice);
+        printf("DPH (%%): ");       scanf("%d", &item->DPH);
+        item->quantity = 0;
+        printf("Objem/ks (m3): ");  scanf("%lf", &item->cubicCapacity);
+        printf("ICO dodavatele: "); scanf("%d", &item->supplier.ICO);
+        printf("Nazev dodavatele: "); scanf(" %39[^\n]", item->supplier.name);
+        printf("Ulice: ");          scanf(" %39[^\n]", item->supplier.address.street);
+        printf("Mesto: ");          scanf(" %39[^\n]", item->supplier.address.city);
+        printf("PSC: ");            scanf(" %39[^\n]", item->supplier.address.zip);
+        printf("Stat: ");           scanf(" %39[^\n]", item->supplier.address.state);
+    }
+
+    (*count)++;
+    printf("Produkt pridan s ID %d.\n", item->ID);
+}
+// funkce na naskladnění
+void stockIn(struct Item *items, int count) {
     showAllItems(items, count);
     int searchID;
-    printf("Zadejte ID produktu k naskladnění: ");
+    printf("Zadejte ID produktu k naskladneni: ");
     scanf("%d", &searchID);
 
-    int found = 0;
     for (int i = 0; i < count; i++) {
         if (items[i].ID == searchID) {
-            found = 1;
-        
             printf("\nProdukt: %s\n", items[i].name);
-            printf("Aktuální množství: %d ks\n", items[i].quantity);
-            printf("Objem jednoho kusu: %.2f m³\n", items[i].cubicCapacity);
-        
-            float totalVolume = getTotalVolume(items, count);
-            float availableSpace = MAX_WAREHOUSE_CAPACITY - totalVolume;
-        
-            printf("Volná kapacita skladu: %.2f m³\n", availableSpace);
-        
-            if (availableSpace <= 0) {
-                printf("Sklad je plný! Nelze naskladnit.\n");
-                break;
+            printf("Aktualni mnozstvi: %d ks\n", items[i].quantity);
+            printf("Objem jednoho kusu: %.4f m3\n", items[i].cubicCapacity);
+
+            double totalVolume  = getTotalVolume(items, count);
+            double availableVol = MAX_WAREHOUSE_CAPACITY - totalVolume;
+            printf("Volna kapacita skladu: %.2f m3\n", availableVol);
+
+            if (availableVol <= 0.0) {
+                printf("Sklad je plny!\n");
+                return;
             }
-        
-            int maxPieces = (int)(availableSpace / items[i].cubicCapacity);
-            printf("Maximálně lze naskladnit: %d ks\n", maxPieces);
-        
+
+            int maxPieces = (int)(availableVol / items[i].cubicCapacity);
+            printf("Maximalne lze naskladnit: %d ks\n", maxPieces);
+
             int addQuantity;
-            printf("Kolik kusů chcete naskladnit: ");
+            printf("Kolik kusu chcete naskladnit: ");
             scanf("%d", &addQuantity);
-        
+
             if (addQuantity < 0) {
-                printf("Množství nemůže být záporné.\n");
+                printf("Mnozstvi nemuze byt zaporne.\n");
             } else if (addQuantity > maxPieces) {
-                printf("Nedostatek místa na skladě! Maximálně můžete naskladnit %d ks (%.2f m³).\n", 
-                       maxPieces, maxPieces * items[i].cubicCapacity);
+                printf("Nedostatek mista! Maximum: %d ks.\n", maxPieces);
             } else {
                 items[i].quantity += addQuantity;
-                printf("Naskladněno %d ks (%.2f m³). Nové množství: %d ks\n", 
-                       addQuantity, addQuantity * items[i].cubicCapacity, items[i].quantity);
+                printf("Naskladneno %d ks. Nove mnozstvi: %d ks.\n",
+                       addQuantity, items[i].quantity);
             }
-            break;
+            return;
         }
     }
-
-    if (!found) {
-        printf("Produkt s ID %d nebyl nalezen.\n", searchID);
-    }
+    printf("Produkt s ID %d nebyl nalezen.\n", searchID);
 }
 
+// spuštení skladu
 int main(void) {
-    struct Item items[1000];
+    int capacity = INITIAL_CAPACITY;
+    int count    = 0;
 
-    // Product 1
-    items[0].ID = 0;
-    items[0].EAN = 894662836;
-    items[0].productionYear = 2025;
-    strcpy(items[0].batch, "112/25");
-    strcpy(items[0].name, "Solaris");
-    items[0].supplierPrice = 43;
-    items[0].sellPrice = 180;
-    items[0].DPH = 21;
-    items[0].quantity = 120;
-    items[0].cubicCapacity = 0.1;
-    items[0].supplier.ICO = 12345678;
-    strcpy(items[0].supplier.name, "Víno Hruška s.r.o.");
-    strcpy(items[0].supplier.address.street, "Blatnička 143");
-    strcpy(items[0].supplier.address.city, "Blatnička");
-    strcpy(items[0].supplier.address.state, "Česka republika");
-    strcpy(items[0].supplier.address.zip, "696 71");
+    struct Item *items = malloc(capacity * sizeof(struct Item));
+    if (!items) {
+        printf("Chyba: malloc selhal.\n");
+        return 1;
+    }
 
-    // Product 2
-    items[1].ID = 1;
-    items[1].EAN = 894662834;
-    items[1].productionYear = 2024;
-    strcpy(items[1].batch, "108/24");
-    strcpy(items[1].name, "Merzling - keg 50l");
-    items[1].supplierPrice = 2000;
-    items[1].sellPrice = 8000;
-    items[1].DPH = 21;
-    items[1].quantity = 15;
-    items[1].cubicCapacity = 1;
-    items[1].supplier.ICO = 87654321;
-    strcpy(items[1].supplier.name, "Víno Hruška s.r.o.");
-    strcpy(items[1].supplier.address.street, "Blatnička 143");
-    strcpy(items[1].supplier.address.city, "Blatnička");
-    strcpy(items[1].supplier.address.state, "Česka republika");
-    strcpy(items[1].supplier.address.zip, "696 71");
+    // vytvoření struktur
 
-    // Product 3
-    items[2].ID = 2;
-    items[2].EAN = 894662837;
-    items[2].productionYear = 2025;
-    strcpy(items[2].batch, "113/25");
-    strcpy(items[2].name, "Děvín");
-    items[2].supplierPrice = 34;
-    items[2].sellPrice = 189;
-    items[2].DPH = 21;
-    items[2].quantity = 8;
-    items[2].cubicCapacity = 0.1;
-    items[2].supplier.ICO = 11223344;
-    strcpy(items[2].supplier.name, "Víno Hruška s.r.o.");
-    strcpy(items[2].supplier.address.street, "Blatnička 143");
-    strcpy(items[2].supplier.address.city, "Blatnička");
-    strcpy(items[2].supplier.address.state, "Česka republika");
-    strcpy(items[2].supplier.address.zip, "696 71");
+    items[0].ID = 0; items[0].EAN = 8594002464874LL;
+        items[0].productionYear = 2025;
+        strcpy(items[0].batch, "112/25");
+        strcpy(items[0].name, "Solaris");
+        items[0].supplierPrice = 35.54; // bez DPH
+        items[0].sellPrice     = 148.76; // bez DPH (180 Kc / 1.21)
+        items[0].DPH = 21; items[0].quantity = 120; items[0].cubicCapacity = 0.001;
+        items[0].supplier.ICO = 12345678;
+        strcpy(items[0].supplier.name, "Vino Hruska s.r.o.");
+        strcpy(items[0].supplier.address.street, "Blatnicka 143");
+        strcpy(items[0].supplier.address.city, "Blatnicka");
+        strcpy(items[0].supplier.address.state, "Ceska republika");
+        strcpy(items[0].supplier.address.zip, "696 71");
 
-    int itemCount = 3;
+        items[1].ID = 1; items[1].EAN = 8594002464881LL;
+        items[1].productionYear = 2024;
+        strcpy(items[1].batch, "108/24");
+        strcpy(items[1].name, "Merzling - keg 50l");
+        items[1].supplierPrice = 1652.89; items[1].sellPrice = 6611.57;
+        items[1].DPH = 21; items[1].quantity = 15; items[1].cubicCapacity = 0.06;
+        items[1].supplier.ICO = 87654321;
+        strcpy(items[1].supplier.name, "Vino Hruska s.r.o.");
+        strcpy(items[1].supplier.address.street, "Blatnicka 143");
+        strcpy(items[1].supplier.address.city, "Blatnicka");
+        strcpy(items[1].supplier.address.state, "Ceska republika");
+        strcpy(items[1].supplier.address.zip, "696 71");
+
+        items[2].ID = 2; items[2].EAN = 8594002464898LL;
+        items[2].productionYear = 2025;
+        strcpy(items[2].batch, "113/25");
+        strcpy(items[2].name, "Devin");
+        items[2].supplierPrice = 28.10; items[2].sellPrice = 156.20;
+        items[2].DPH = 21; items[2].quantity = 8; items[2].cubicCapacity = 0.001;
+        items[2].supplier.ICO = 11223344;
+        strcpy(items[2].supplier.name, "Vino Hruska s.r.o.");
+        strcpy(items[2].supplier.address.street, "Blatnicka 143");
+        strcpy(items[2].supplier.address.city, "Blatnicka");
+        strcpy(items[2].supplier.address.state, "Ceska republika");
+        strcpy(items[2].supplier.address.zip, "696 71");
+
+    count = 3;
 
     char choice;
     do {
@@ -475,49 +491,41 @@ int main(void) {
 
         switch (choice) {
             case '1':
-                printf("\n--- Vypis vsech produktu ---\n");
-                showAllItems(items, itemCount);
+                showAllItems(items, count);
                 break;
             case '2':
-                printf("\n--- Vyhledavani produktu ---\n");
-                searchItems(items, itemCount);
+                searchItems(items, count);
                 break;
             case '3':
-                printf("\n--- Vyhledavani podle ceny ---\n");
-                searchItemsBySellerPrice(items, itemCount);
+                searchItemsByPrice(items, count);
                 break;
             case '4':
-                printf("\n--- Detail produktu ---\n");
-                showItemDetail(items, itemCount);
+                showItemDetail(items, count);
                 break;
             case '5':
-                printf("\n--- Odstraneni produktu ---\n");
-                removeItem(items, &itemCount);
+                removeItem(&items, &count, &capacity);
                 break;
             case '6':
-                printf("\n--- Upravit produkt ---\n");
-                editItem(items, itemCount);
+                editItem(items, count);
                 break;
             case '7':
-                printf("\n--- Nový produkt ---\n");
-                addItem(items, &itemCount);
+                addItem(&items, &count, &capacity);
                 break;
             case '8':
-                printf("\n--- Stav skladu ---\n");
-                showWarehouseStatus(items, itemCount);
+                showWarehouseStatus(items, count);
                 break;
             case '9':
-                printf("\n--- Naskladnění ---\n");
-                stockIn(items, itemCount);
+                stockIn(items, count);
                 break;
             case 'X':
-                case 'x':
+            case 'x':
                 printf("\nUkoncuji aplikaci...\n");
                 break;
             default:
-                printf("\nNeplatna volba\n");
+                printf("\nNeplatna volba.\n");
         }
     } while (choice != 'X' && choice != 'x');
 
+    free(items);
     return 0;
 }
